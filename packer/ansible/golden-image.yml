@@ -1,0 +1,221 @@
+---
+- name: Harden Debian 13 and prepare k3s server nodes
+  hosts: all
+  become: true
+
+  vars:
+    jre_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKqBKS2yFOrBAVBi+gKoKaf3wi4kqhBHs7e7/FVGWMnr"
+
+    # Anpassen!
+    cluster_private_cidr: "10.0.0.0/8"
+
+    base_packages:
+      - sudo
+      - curl
+      - wget
+      - vim
+      - git
+      - htop
+      - ca-certificates
+      - unzip
+      - bash-completion
+      - ufw
+      - fail2ban
+      - rsyslog
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade installed packages
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install base packages
+      ansible.builtin.apt:
+        name: "{{ base_packages }}"
+        state: present
+
+    - name: Create user jre
+      ansible.builtin.user:
+        name: jre
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+
+    - name: Add authorized key for jre
+      ansible.posix.authorized_key:
+        user: jre
+        key: "{{ jre_public_key }}"
+        state: present
+
+    - name: Ensure sudo group requires password
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL:ALL) ALL'
+        validate: 'visudo -cf %s'
+
+    - name: Disable root SSH login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
+      notify: Restart SSH
+
+    - name: Disable password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+      notify: Restart SSH
+
+    - name: Disable empty passwords
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitEmptyPasswords"
+        line: "PermitEmptyPasswords no"
+      notify: Restart SSH
+
+    - name: Limit SSH authentication attempts
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?MaxAuthTries"
+        line: "MaxAuthTries 3"
+      notify: Restart SSH
+
+    - name: Set SSH idle timeout interval
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?ClientAliveInterval"
+        line: "ClientAliveInterval 300"
+      notify: Restart SSH
+
+    - name: Set SSH idle timeout count
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?ClientAliveCountMax"
+        line: "ClientAliveCountMax 2"
+      notify: Restart SSH
+
+    - name: Configure sysctl for hardening and k3s
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-k3s-hardening.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          net.ipv4.ip_forward = 1
+          net.ipv6.conf.all.forwarding = 1
+          net.ipv4.conf.all.accept_redirects = 0
+          net.ipv4.conf.default.accept_redirects = 0
+          net.ipv6.conf.all.accept_redirects = 0
+          net.ipv6.conf.default.accept_redirects = 0
+          net.ipv4.conf.all.send_redirects = 0
+          net.ipv4.conf.default.send_redirects = 0
+          net.ipv4.conf.all.accept_source_route = 0
+          net.ipv4.conf.default.accept_source_route = 0
+          net.ipv4.tcp_syncookies = 1
+          net.ipv4.icmp_echo_ignore_broadcasts = 1
+          vm.swappiness = 10
+      notify: Reload sysctl
+
+    - name: Ensure fail2ban is enabled
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+        state: started
+
+    - name: Ensure rsyslog is enabled
+      ansible.builtin.systemd:
+        name: rsyslog
+        enabled: true
+        state: started
+
+    - name: Set UFW default deny incoming
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set UFW default allow outgoing
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow SSH from anywhere
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Allow HTTP from anywhere
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Allow HTTPS from anywhere
+      community.general.ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+
+    - name: Allow k3s Kubernetes API from private cluster network
+      community.general.ufw:
+        rule: allow
+        port: "6443"
+        proto: tcp
+        src: "{{ cluster_private_cidr }}"
+
+    - name: Allow etcd client traffic from private cluster network
+      community.general.ufw:
+        rule: allow
+        port: "2379"
+        proto: tcp
+        src: "{{ cluster_private_cidr }}"
+
+    - name: Allow etcd peer traffic from private cluster network
+      community.general.ufw:
+        rule: allow
+        port: "2380"
+        proto: tcp
+        src: "{{ cluster_private_cidr }}"
+
+    - name: Allow kubelet API from private cluster network
+      community.general.ufw:
+        rule: allow
+        port: "10250"
+        proto: tcp
+        src: "{{ cluster_private_cidr }}"
+
+    - name: Allow Flannel VXLAN from private cluster network
+      community.general.ufw:
+        rule: allow
+        port: "8472"
+        proto: udp
+        src: "{{ cluster_private_cidr }}"
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+
+    - name: Clean apt cache
+      ansible.builtin.apt:
+        autoclean: true
+
+    - name: Remove unused dependencies
+      ansible.builtin.apt:
+        autoremove: true
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: Reload sysctl
+      ansible.builtin.command: sysctl --system
+      changed_when: true

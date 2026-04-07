@@ -51,10 +51,11 @@ services:
         letsencrypt['enable'] = true
         letsencrypt['contact_emails'] = ['${acme_email}']
         gitlab_rails['time_zone'] = 'Europe/Berlin'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
     ports:
       - "80:80"
       - "443:443"
-      - "22:22"
+      - "2222:22"
     volumes:
       - /srv/gitlab/config:/etc/gitlab
       - /srv/gitlab/logs:/var/log/gitlab

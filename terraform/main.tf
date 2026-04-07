@@ -33,7 +33,7 @@ resource "google_compute_firewall" "gitlab" {
 
   allow {
     protocol = "tcp"
-    ports    = ["22", "80", "443"]
+    ports    = ["22", "80", "443", "2222"]
   }
 
   source_ranges = ["0.0.0.0/0"]

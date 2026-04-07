@@ -1,7 +1,11 @@
-# Latest gitlab-base image
+# Latest gitlab-base image (used as fallback when gitlab_base_image variable is not set)
 data "google_compute_image" "gitlab_base" {
   family  = "gitlab-base"
   project = var.project_id
+}
+
+locals {
+  image = var.gitlab_base_image != "" ? "projects/${var.project_id}/global/images/${var.gitlab_base_image}" : data.google_compute_image.gitlab_base.self_link
 }
 
 # Static external IP
@@ -45,7 +49,7 @@ resource "google_compute_instance" "gitlab" {
 
   boot_disk {
     initialize_params {
-      image = data.google_compute_image.gitlab_base.self_link
+      image = local.image
       size  = 10
       type  = "pd-balanced"
     }

@@ -34,7 +34,7 @@ source "googlecompute" "debian13" {
   source_image_project_id = ["debian-cloud"]
 
   machine_type = "e2-medium"
-  disk_size    = 20
+  disk_size    = 10
   disk_type    = "pd-balanced"
 
   ssh_username = "packer"
@@ -69,5 +69,18 @@ build {
     extra_arguments = [
       "--ssh-extra-args", "-o IdentitiesOnly=yes"
     ]
+  }
+
+  post-processors {
+    post-processor "manifest" {
+      output     = "packer-manifest.json"
+      strip_path = true
+    }
+    post-processor "shell-local" {
+      inline = [
+        "IMAGE_NAME=$(jq -r '.builds[-1].artifact_id' packer-manifest.json)",
+        "echo \"gitlab_base_image = \\\"$IMAGE_NAME\\\"\" > ../terraform/terraform.tfvars"
+      ]
+    }
   }
 }

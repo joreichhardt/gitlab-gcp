@@ -34,6 +34,12 @@ variable "acme_email" {
   default     = "johannes.reichhardt@gmail.com"
 }
 
+variable "gitlab_base_image" {
+  description = "Specific image name to deploy; if empty, uses latest from gitlab-base family"
+  type        = string
+  default     = ""
+}
+
 variable "enable_snapshots" {
   description = "Enable daily disk snapshot schedule (7-day retention)"
   type        = bool

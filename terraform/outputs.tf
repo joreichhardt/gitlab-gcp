@@ -10,5 +10,5 @@ output "gitlab_url" {
 
 output "ssh_command" {
   description = "SSH command to connect to the VM"
-  value       = "ssh jre@${google_compute_address.gitlab.address}"
+  value       = "gcloud compute ssh ${google_compute_address.gitlab.address}"
 }

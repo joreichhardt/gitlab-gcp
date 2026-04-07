@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+exec > /var/log/gitlab-startup.log 2>&1
 
 DATA_DISK="/dev/sdb"
 MOUNT_POINT="/srv/gitlab"
@@ -37,6 +38,7 @@ cat > /etc/docker/daemon.json << 'DOCKERCFG'
 DOCKERCFG
 
 systemctl restart docker
+timeout 30 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
 
 # Write docker-compose.yml
 cat > "$MOUNT_POINT/docker-compose.yml" << 'COMPOSE'

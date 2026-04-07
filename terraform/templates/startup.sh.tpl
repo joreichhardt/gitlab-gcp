@@ -9,9 +9,11 @@ if ! blkid "$DATA_DISK" > /dev/null 2>&1; then
   mkfs.ext4 -F "$DATA_DISK"
 fi
 
-# Mount data disk
+# Mount data disk (idempotent)
 mkdir -p "$MOUNT_POINT"
-mount "$DATA_DISK" "$MOUNT_POINT"
+if ! mountpoint -q "$MOUNT_POINT"; then
+  mount "$DATA_DISK" "$MOUNT_POINT"
+fi
 
 # Add to fstab (idempotent)
 if ! grep -q "$DATA_DISK" /etc/fstab; then

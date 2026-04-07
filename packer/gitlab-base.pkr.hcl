@@ -48,7 +48,9 @@ source "googlecompute" "debian13" {
 
   tags = ["packer-build"]
 
-  use_os_login = false
+  metadata = {
+    enable-oslogin = "false"
+  }
 }
 
 build {

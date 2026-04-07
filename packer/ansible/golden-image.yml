@@ -142,6 +142,11 @@
         direction: outgoing
         policy: allow
 
+    - name: Set UFW default allow forward (required for Docker NAT)
+      community.general.ufw:
+        direction: routed
+        policy: allow
+
     - name: Allow SSH from anywhere
       community.general.ufw:
         rule: allow
@@ -158,6 +163,12 @@
       community.general.ufw:
         rule: allow
         port: "443"
+        proto: tcp
+
+    - name: Allow GitLab SSH from anywhere
+      community.general.ufw:
+        rule: allow
+        port: "2222"
         proto: tcp
 
     - name: Enable UFW

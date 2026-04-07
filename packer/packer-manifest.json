@@ -8,7 +8,16 @@
       "artifact_id": "gitlab-base-1775522464",
       "packer_run_uuid": "3847f703-a726-d98e-e07f-3dacb4d17cbe",
       "custom_data": null
+    },
+    {
+      "name": "debian13",
+      "builder_type": "googlecompute",
+      "build_time": 1775536988,
+      "files": null,
+      "artifact_id": "gitlab-base-1775536148",
+      "packer_run_uuid": "03769053-a89c-d611-72a8-11ab824a8830",
+      "custom_data": null
     }
   ],
-  "last_run_uuid": "3847f703-a726-d98e-e07f-3dacb4d17cbe"
+  "last_run_uuid": "03769053-a89c-d611-72a8-11ab824a8830"
 }

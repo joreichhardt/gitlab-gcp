@@ -59,6 +59,7 @@ build {
     playbook_file = "./ansible/golden-image.yml"
     user          = "packer"
     extra_arguments = [
+      "-v",
       "--ssh-extra-args", "-o IdentitiesOnly=yes"
     ]
   }
@@ -67,6 +68,7 @@ build {
     playbook_file = "./ansible/prepare-gitlab.yml"
     user          = "packer"
     extra_arguments = [
+      "-v",
       "--ssh-extra-args", "-o IdentitiesOnly=yes"
     ]
   }

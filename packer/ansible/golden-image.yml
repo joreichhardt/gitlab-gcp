@@ -1,13 +1,10 @@
 ---
-- name: Harden Debian 13 and prepare k3s server nodes
+- name: Harden Debian 13 base image
   hosts: all
   become: true
 
   vars:
     jre_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKqBKS2yFOrBAVBi+gKoKaf3wi4kqhBHs7e7/FVGWMnr"
-
-    # Anpassen!
-    cluster_private_cidr: "10.0.0.0/8"
 
     base_packages:
       - sudo
@@ -101,9 +98,9 @@
         line: "ClientAliveCountMax 2"
       notify: Restart SSH
 
-    - name: Configure sysctl for hardening and k3s
+    - name: Configure sysctl for hardening
       ansible.builtin.copy:
-        dest: /etc/sysctl.d/99-k3s-hardening.conf
+        dest: /etc/sysctl.d/99-hardening.conf
         owner: root
         group: root
         mode: "0644"
@@ -162,41 +159,6 @@
         rule: allow
         port: "443"
         proto: tcp
-
-    - name: Allow k3s Kubernetes API from private cluster network
-      community.general.ufw:
-        rule: allow
-        port: "6443"
-        proto: tcp
-        src: "{{ cluster_private_cidr }}"
-
-    - name: Allow etcd client traffic from private cluster network
-      community.general.ufw:
-        rule: allow
-        port: "2379"
-        proto: tcp
-        src: "{{ cluster_private_cidr }}"
-
-    - name: Allow etcd peer traffic from private cluster network
-      community.general.ufw:
-        rule: allow
-        port: "2380"
-        proto: tcp
-        src: "{{ cluster_private_cidr }}"
-
-    - name: Allow kubelet API from private cluster network
-      community.general.ufw:
-        rule: allow
-        port: "10250"
-        proto: tcp
-        src: "{{ cluster_private_cidr }}"
-
-    - name: Allow Flannel VXLAN from private cluster network
-      community.general.ufw:
-        rule: allow
-        port: "8472"
-        proto: udp
-        src: "{{ cluster_private_cidr }}"
 
     - name: Enable UFW
       community.general.ufw:
